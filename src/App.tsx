@@ -130,12 +130,12 @@ function App() {
   }, []);
 
   const restoreSession = (session: SavedSession) => {
-    session.tabs.forEach((tab) => {
-      if (tab.url) {
-        chrome.tabs.create({ url: tab.url });
-      }
-    });
-  };
+  const urls = session.tabs.map((tab) => tab.url).filter(Boolean);
+
+  if (urls.length === 0) return;
+
+  chrome.windows.create({ url: urls });
+};
 
  const deleteSession = (sessionId: string) => {
   const confirmed = confirm("Delete this saved session?");
