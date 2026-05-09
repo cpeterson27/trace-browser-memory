@@ -22,14 +22,23 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
-  useEffect(() => {
-    chrome.storage.local.get(
-      ["sessions"],
-      (result: { sessions?: SavedSession[] }) => {
-        setSessions(result.sessions || []);
+useEffect(() => {
+  chrome.storage.local.get(
+    ["sessions", "lastSavedAt"],
+    (result: { sessions?: SavedSession[]; lastSavedAt?: string }) => {
+      setSessions(result.sessions || []);
+
+      if (result.lastSavedAt) {
+        setLastSavedAt(
+          new Date(result.lastSavedAt).toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+          })
+        );
       }
-    );
-  }, []);
+    }
+  );
+}, []);
 
   const saveCurrentSession = useCallback(async (isAutoSave = false) => {
     const tabs = await chrome.tabs.query({ currentWindow: true });
