@@ -24,6 +24,7 @@ function App() {
   const [sessions, setSessions] = useState<SavedSession[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState("All");
+  const [expandedSessionIds, setExpandedSessionIds] = useState<string[]>([]);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
@@ -92,29 +93,26 @@ function App() {
           if (isDuplicate) return;
         }
 
-       const newSession: SavedSession = {
-  id: crypto.randomUUID(),
-  name:
-    tabs
-      .slice(0, 3)
-      .map((tab) => tab.title?.split("|")[0]?.trim() || "Untitled")
-      .join(", ") || "Auto-save",
-
-  summary: tabs
-    .slice(0, 3)
-    .map((tab) => tab.title?.split("|")[0]?.trim())
-    .filter(Boolean)
-    .join(" • "),
-
-  createdAt: new Date().toISOString(),
-
-  tabs: tabs.map((tab) => ({
-    id: crypto.randomUUID(),
-    title: tab.title || "Untitled",
-    url: tab.url || "",
-    favIconUrl: tab.favIconUrl,
-  })),
-};
+        const newSession: SavedSession = {
+          id: crypto.randomUUID(),
+          name:
+            tabs
+              .slice(0, 3)
+              .map((tab) => tab.title?.split("|")[0]?.trim() || "Untitled")
+              .join(", ") || "Auto-save",
+          summary: tabs
+            .slice(0, 3)
+            .map((tab) => tab.title?.split("|")[0]?.trim())
+            .filter(Boolean)
+            .join(" • "),
+          createdAt: new Date().toISOString(),
+          tabs: tabs.map((tab: chrome.tabs.Tab) => ({
+            id: crypto.randomUUID(),
+            title: tab.title || "Untitled",
+            url: tab.url || "",
+            favIconUrl: tab.favIconUrl,
+          })),
+        };
 
         const updatedSessions = [newSession, ...existingSessions].slice(0, 25);
 
@@ -185,6 +183,35 @@ function App() {
     });
   };
 
+  const editSessionSummary = (sessionId: string) => {
+    const sessionToEdit = sessions.find((session) => session.id === sessionId);
+
+    const newSummary = prompt(
+      "Edit this session summary:",
+      sessionToEdit?.summary || ""
+    );
+
+    if (newSummary === null) return;
+
+    const updatedSessions = sessions.map((session) =>
+      session.id === sessionId
+        ? { ...session, summary: newSummary.trim() }
+        : session
+    );
+
+    chrome.storage.local.set({ sessions: updatedSessions }, () => {
+      setSessions(updatedSessions);
+    });
+  };
+
+  const toggleSessionExpanded = (sessionId: string) => {
+    setExpandedSessionIds((currentIds) =>
+      currentIds.includes(sessionId)
+        ? currentIds.filter((id) => id !== sessionId)
+        : [...currentIds, sessionId]
+    );
+  };
+
   const togglePinSession = (sessionId: string) => {
     const updatedSessions = sessions.map((session) =>
       session.id === sessionId
@@ -224,6 +251,7 @@ function App() {
       setSessions([]);
       setLastSavedAt(null);
       setSelectedTag("All");
+      setExpandedSessionIds([]);
     });
   };
 
@@ -278,6 +306,7 @@ function App() {
 
       const matchesSearch =
         session.name.toLowerCase().includes(query) ||
+        session.summary?.toLowerCase().includes(query) ||
         session.tag?.toLowerCase().includes(query) ||
         session.tabs.some(
           (tab) =>
@@ -406,14 +435,25 @@ function App() {
                     {new Date(session.createdAt).toLocaleString()} ·{" "}
                     {session.tabs.length} tabs
                   </p>
+
                   {session.summary && (
-  <p className="sessionSummary">{session.summary}</p>
-)}
+                    <p className="sessionSummary">{session.summary}</p>
+                  )}
                 </div>
 
                 <div className="sessionActions">
                   <button onClick={() => togglePinSession(session.id)}>
                     {session.isPinned ? "Unpin" : "Pin"}
+                  </button>
+
+                  <button onClick={() => editSessionSummary(session.id)}>
+                    Edit Summary
+                  </button>
+
+                  <button onClick={() => toggleSessionExpanded(session.id)}>
+                    {expandedSessionIds.includes(session.id)
+                      ? "Hide Tabs"
+                      : "Show Tabs"}
                   </button>
 
                   <button onClick={() => restoreSession(session)}>
@@ -439,28 +479,30 @@ function App() {
                 </div>
               </div>
 
-              <div className="tabList">
-                {session.tabs.slice(0, 5).map((tab) => (
-                  <button
-                    className="tabItem"
-                    key={tab.id}
-                    onClick={() => chrome.tabs.create({ url: tab.url })}
-                  >
-                    {tab.favIconUrl ? (
-                      <img src={tab.favIconUrl} alt="" />
-                    ) : (
-                      <span className="fallbackIcon">•</span>
-                    )}
-                    <span>{tab.title}</span>
-                  </button>
-                ))}
+              {expandedSessionIds.includes(session.id) && (
+                <div className="tabList">
+                  {session.tabs.slice(0, 5).map((tab) => (
+                    <button
+                      className="tabItem"
+                      key={tab.id}
+                      onClick={() => chrome.tabs.create({ url: tab.url })}
+                    >
+                      {tab.favIconUrl ? (
+                        <img src={tab.favIconUrl} alt="" />
+                      ) : (
+                        <span className="fallbackIcon">•</span>
+                      )}
+                      <span>{tab.title}</span>
+                    </button>
+                  ))}
 
-                {session.tabs.length > 5 && (
-                  <p className="moreTabs">
-                    +{session.tabs.length - 5} more tabs
-                  </p>
-                )}
-              </div>
+                  {session.tabs.length > 5 && (
+                    <p className="moreTabs">
+                      +{session.tabs.length - 5} more tabs
+                    </p>
+                  )}
+                </div>
+              )}
             </article>
           ))
         )}
