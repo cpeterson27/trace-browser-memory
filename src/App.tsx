@@ -15,6 +15,7 @@ type SavedSession = {
   name: string;
   createdAt: string;
   tabs: SavedTab[];
+  isPinned?: boolean;
 };
 
 function App() {
@@ -137,6 +138,14 @@ function App() {
   chrome.windows.create({ url: urls });
 };
 
+const copySessionLinks = async (session: SavedSession) => {
+  const links = session.tabs.map((tab) => `${tab.title}\n${tab.url}`).join("\n\n");
+
+  await navigator.clipboard.writeText(links);
+
+  alert("Session links copied!");
+};
+
  const deleteSession = (sessionId: string) => {
   const confirmed = confirm("Delete this saved session?");
 
@@ -166,6 +175,18 @@ function App() {
       setSessions(updatedSessions);
     });
   };
+
+  const togglePinSession = (sessionId: string) => {
+  const updatedSessions = sessions.map((session) =>
+    session.id === sessionId
+      ? { ...session, isPinned: !session.isPinned }
+      : session
+  );
+
+  chrome.storage.local.set({ sessions: updatedSessions }, () => {
+    setSessions(updatedSessions);
+  });
+};
 
  const clearAllSessions = () => {
   const confirmed = confirm("Clear all saved sessions? This cannot be undone.");
@@ -219,7 +240,8 @@ const importSessions = () => {
   input.click();
 };
 
-  const filteredSessions = sessions.filter((session) => {
+ const filteredSessions = sessions
+  .filter((session) => {
     const query = searchQuery.toLowerCase();
 
     return (
@@ -230,7 +252,8 @@ const importSessions = () => {
           tab.url.toLowerCase().includes(query)
       )
     );
-  });
+  })
+  .sort((a, b) => Number(b.isPinned) - Number(a.isPinned));
 
   const totalTabs = sessions.reduce(
   (total, session) => total + session.tabs.length,
@@ -312,29 +335,36 @@ const importSessions = () => {
             <article className="sessionCard" key={session.id}>
               <div className="sessionHeader">
                 <div>
-                  <h3>{session.name}</h3>
+                  <h3>{session.isPinned ? "📌 " : ""}{session.name}</h3>
                   <p>
                     {new Date(session.createdAt).toLocaleString()} ·{" "}
                     {session.tabs.length} tabs
                   </p>
                 </div>
 
-                <div className="sessionActions">
-                  <button onClick={() => restoreSession(session)}>
-                    Restore
-                  </button>
+              <div className="sessionActions">
+                <button onClick={() => togglePinSession(session.id)}>
+  {session.isPinned ? "Unpin" : "Pin"}
+</button>
+  <button onClick={() => restoreSession(session)}>
+    Restore
+  </button>
 
-                  <button onClick={() => renameSession(session.id)}>
-                    Rename
-                  </button>
+  <button onClick={() => renameSession(session.id)}>
+    Rename
+  </button>
 
-                  <button
-                    className="dangerButton"
-                    onClick={() => deleteSession(session.id)}
-                  >
-                    Delete
-                  </button>
-                </div>
+  <button onClick={() => copySessionLinks(session)}>
+    Copy
+  </button>
+
+  <button
+    className="dangerButton"
+    onClick={() => deleteSession(session.id)}
+  >
+    Delete
+  </button>
+</div>
               </div>
 
               <div className="tabList">
