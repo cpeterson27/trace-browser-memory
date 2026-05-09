@@ -12,11 +12,19 @@ type SavedSession = {
   name: string;
   createdAt: string;
   tabs: SavedTab[];
+  isPinned?: boolean;
+  tag?: string;
 };
 
 const AUTO_SAVE_ALARM = "trace-auto-save";
 
 chrome.runtime.onInstalled.addListener(() => {
+  chrome.alarms.create(AUTO_SAVE_ALARM, {
+    periodInMinutes: 5,
+  });
+});
+
+chrome.runtime.onStartup.addListener(() => {
   chrome.alarms.create(AUTO_SAVE_ALARM, {
     periodInMinutes: 5,
   });
@@ -57,10 +65,7 @@ const saveCurrentWindowSession = async () => {
 
       const newSession: SavedSession = {
         id: crypto.randomUUID(),
-        name: `Auto-save · ${new Date().toLocaleTimeString([], {
-          hour: "numeric",
-          minute: "2-digit",
-        })}`,
+        name: "Auto-save",
         createdAt: new Date().toISOString(),
         tabs: tabs.map((tab) => ({
           id: crypto.randomUUID(),

@@ -22,6 +22,7 @@ type SavedSession = {
 function App() {
   const [sessions, setSessions] = useState<SavedSession[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTag, setSelectedTag] = useState("All");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
@@ -132,34 +133,36 @@ function App() {
   }, []);
 
   const restoreSession = (session: SavedSession) => {
-  const urls = session.tabs.map((tab) => tab.url).filter(Boolean);
+    const urls = session.tabs.map((tab) => tab.url).filter(Boolean);
 
-  if (urls.length === 0) return;
+    if (urls.length === 0) return;
 
-  chrome.windows.create({ url: urls });
-};
+    chrome.windows.create({ url: urls });
+  };
 
-const copySessionLinks = async (session: SavedSession) => {
-  const links = session.tabs.map((tab) => `${tab.title}\n${tab.url}`).join("\n\n");
+  const copySessionLinks = async (session: SavedSession) => {
+    const links = session.tabs
+      .map((tab) => `${tab.title}\n${tab.url}`)
+      .join("\n\n");
 
-  await navigator.clipboard.writeText(links);
+    await navigator.clipboard.writeText(links);
 
-  alert("Session links copied!");
-};
+    alert("Session links copied!");
+  };
 
- const deleteSession = (sessionId: string) => {
-  const confirmed = confirm("Delete this saved session?");
+  const deleteSession = (sessionId: string) => {
+    const confirmed = confirm("Delete this saved session?");
 
-  if (!confirmed) return;
+    if (!confirmed) return;
 
-  const updatedSessions = sessions.filter(
-    (session) => session.id !== sessionId
-  );
+    const updatedSessions = sessions.filter(
+      (session) => session.id !== sessionId
+    );
 
-  chrome.storage.local.set({ sessions: updatedSessions }, () => {
-    setSessions(updatedSessions);
-  });
-};
+    chrome.storage.local.set({ sessions: updatedSessions }, () => {
+      setSessions(updatedSessions);
+    });
+  };
 
   const renameSession = (sessionId: string) => {
     const newName = prompt("Rename this session:");
@@ -178,105 +181,115 @@ const copySessionLinks = async (session: SavedSession) => {
   };
 
   const togglePinSession = (sessionId: string) => {
-  const updatedSessions = sessions.map((session) =>
-    session.id === sessionId
-      ? { ...session, isPinned: !session.isPinned }
-      : session
-  );
-
-  chrome.storage.local.set({ sessions: updatedSessions }, () => {
-    setSessions(updatedSessions);
-  });
-};
-
-const tagSession = (sessionId: string) => {
-  const newTag = prompt("Add a tag/category for this session:");
-
-  if (!newTag?.trim()) return;
-
-  const updatedSessions = sessions.map((session) =>
-    session.id === sessionId
-      ? { ...session, tag: newTag.trim() }
-      : session
-  );
-
-  chrome.storage.local.set({ sessions: updatedSessions }, () => {
-    setSessions(updatedSessions);
-  });
-};
-
- const clearAllSessions = () => {
-  const confirmed = confirm("Clear all saved sessions? This cannot be undone.");
-
-  if (!confirmed) return;
-
-  chrome.storage.local.set({ sessions: [], lastSavedAt: null }, () => {
-    setSessions([]);
-    setLastSavedAt(null);
-  });
-};
-
-  const exportSessions = () => {
-  const data = JSON.stringify(sessions, null, 2);
-  const blob = new Blob([data], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `trace-sessions-${new Date().toISOString()}.json`;
-  link.click();
-
-  URL.revokeObjectURL(url);
-};
-
-const importSessions = () => {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "application/json";
-
-  input.onchange = async () => {
-    const file = input.files?.[0];
-
-    if (!file) return;
-
-    const text = await file.text();
-    const importedSessions = JSON.parse(text) as SavedSession[];
-
-    if (!Array.isArray(importedSessions)) {
-      alert("Invalid Trace sessions file.");
-      return;
-    }
-
-    const updatedSessions = [...importedSessions, ...sessions].slice(0, 25);
+    const updatedSessions = sessions.map((session) =>
+      session.id === sessionId
+        ? { ...session, isPinned: !session.isPinned }
+        : session
+    );
 
     chrome.storage.local.set({ sessions: updatedSessions }, () => {
       setSessions(updatedSessions);
     });
   };
 
-  input.click();
-};
+  const tagSession = (sessionId: string) => {
+    const newTag = prompt("Add a tag/category for this session:");
 
- const filteredSessions = sessions
-  .filter((session) => {
-    const query = searchQuery.toLowerCase();
+    if (!newTag?.trim()) return;
 
-    return (
-      session.tag?.toLowerCase().includes(query) ||
-      session.name.toLowerCase().includes(query) ||
-      session.tabs.some(
-        (tab) =>
-          tab.title.toLowerCase().includes(query) ||
-          tab.url.toLowerCase().includes(query)
-      )
+    const updatedSessions = sessions.map((session) =>
+      session.id === sessionId
+        ? { ...session, tag: newTag.trim() }
+        : session
     );
-  })
-  .sort((a, b) => Number(b.isPinned) - Number(a.isPinned));
+
+    chrome.storage.local.set({ sessions: updatedSessions }, () => {
+      setSessions(updatedSessions);
+    });
+  };
+
+  const clearAllSessions = () => {
+    const confirmed = confirm(
+      "Clear all saved sessions? This cannot be undone."
+    );
+
+    if (!confirmed) return;
+
+    chrome.storage.local.set({ sessions: [], lastSavedAt: null }, () => {
+      setSessions([]);
+      setLastSavedAt(null);
+      setSelectedTag("All");
+    });
+  };
+
+  const exportSessions = () => {
+    const data = JSON.stringify(sessions, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `trace-sessions-${new Date().toISOString()}.json`;
+    link.click();
+
+    URL.revokeObjectURL(url);
+  };
+
+  const importSessions = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+
+    input.onchange = async () => {
+      const file = input.files?.[0];
+
+      if (!file) return;
+
+      const text = await file.text();
+      const importedSessions = JSON.parse(text) as SavedSession[];
+
+      if (!Array.isArray(importedSessions)) {
+        alert("Invalid Trace sessions file.");
+        return;
+      }
+
+      const updatedSessions = [...importedSessions, ...sessions].slice(0, 25);
+
+      chrome.storage.local.set({ sessions: updatedSessions }, () => {
+        setSessions(updatedSessions);
+      });
+    };
+
+    input.click();
+  };
+
+  const availableTags = Array.from(
+    new Set(sessions.map((session) => session.tag).filter(Boolean))
+  ) as string[];
+
+  const filteredSessions = sessions
+    .filter((session) => {
+      const query = searchQuery.toLowerCase();
+
+      const matchesSearch =
+        session.name.toLowerCase().includes(query) ||
+        session.tag?.toLowerCase().includes(query) ||
+        session.tabs.some(
+          (tab) =>
+            tab.title.toLowerCase().includes(query) ||
+            tab.url.toLowerCase().includes(query)
+        );
+
+      const matchesTag = selectedTag === "All" || session.tag === selectedTag;
+
+      return matchesSearch && matchesTag;
+    })
+    .sort((a, b) => Number(b.isPinned) - Number(a.isPinned));
 
   const totalTabs = sessions.reduce(
-  (total, session) => total + session.tabs.length,
-  0
-);
+    (total, session) => total + session.tabs.length,
+    0
+  );
 
   return (
     <main className="app">
@@ -304,9 +317,9 @@ const importSessions = () => {
       </p>
 
       <div className="stats">
-  <span>{sessions.length} sessions</span>
-  <span>{totalTabs} tabs saved</span>
-</div>
+        <span>{sessions.length} sessions</span>
+        <span>{totalTabs} tabs saved</span>
+      </div>
 
       <input
         className="searchInput"
@@ -316,20 +329,42 @@ const importSessions = () => {
         onChange={(event) => setSearchQuery(event.target.value)}
       />
 
-      {sessions.length > 0 && (
-  <div className="utilityActions">
-    <button className="secondaryButton" onClick={importSessions}>
-  Import Sessions
-</button>
-    <button className="secondaryButton" onClick={exportSessions}>
-      Export Sessions
-    </button>
+      {availableTags.length > 0 && (
+        <div className="tagFilters">
+          <button
+            className={selectedTag === "All" ? "activeTagFilter" : ""}
+            onClick={() => setSelectedTag("All")}
+          >
+            All
+          </button>
 
-    <button className="secondaryButton" onClick={clearAllSessions}>
-      Clear All Sessions
-    </button>
-  </div>
-)}
+          {availableTags.map((tag) => (
+            <button
+              key={tag}
+              className={selectedTag === tag ? "activeTagFilter" : ""}
+              onClick={() => setSelectedTag(tag)}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {sessions.length > 0 && (
+        <div className="utilityActions">
+          <button className="secondaryButton" onClick={importSessions}>
+            Import Sessions
+          </button>
+
+          <button className="secondaryButton" onClick={exportSessions}>
+            Export Sessions
+          </button>
+
+          <button className="secondaryButton" onClick={clearAllSessions}>
+            Clear All Sessions
+          </button>
+        </div>
+      )}
 
       <section className="sessions">
         <h2>Saved Sessions</h2>
@@ -353,40 +388,47 @@ const importSessions = () => {
             <article className="sessionCard" key={session.id}>
               <div className="sessionHeader">
                 <div>
-                  <h3>{session.isPinned ? "📌 " : ""}{session.name}</h3>
-                  {session.tag && <span className="sessionTag">{session.tag}</span>}
+                  <h3>
+                    {session.isPinned ? "📌 " : ""}
+                    {session.name}
+                  </h3>
+
+                  {session.tag && (
+                    <span className="sessionTag">{session.tag}</span>
+                  )}
+
                   <p>
                     {new Date(session.createdAt).toLocaleString()} ·{" "}
                     {session.tabs.length} tabs
                   </p>
                 </div>
 
-              <div className="sessionActions">
-                <button onClick={() => togglePinSession(session.id)}>
-  {session.isPinned ? "Unpin" : "Pin"}
-</button>
-  <button onClick={() => restoreSession(session)}>
-    Restore
-  </button>
-  <button onClick={() => tagSession(session.id)}>
-  Tag
-</button>
+                <div className="sessionActions">
+                  <button onClick={() => togglePinSession(session.id)}>
+                    {session.isPinned ? "Unpin" : "Pin"}
+                  </button>
 
-  <button onClick={() => renameSession(session.id)}>
-    Rename
-  </button>
+                  <button onClick={() => restoreSession(session)}>
+                    Restore
+                  </button>
 
-  <button onClick={() => copySessionLinks(session)}>
-    Copy
-  </button>
+                  <button onClick={() => tagSession(session.id)}>Tag</button>
 
-  <button
-    className="dangerButton"
-    onClick={() => deleteSession(session.id)}
-  >
-    Delete
-  </button>
-</div>
+                  <button onClick={() => renameSession(session.id)}>
+                    Rename
+                  </button>
+
+                  <button onClick={() => copySessionLinks(session)}>
+                    Copy
+                  </button>
+
+                  <button
+                    className="dangerButton"
+                    onClick={() => deleteSession(session.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
 
               <div className="tabList">
