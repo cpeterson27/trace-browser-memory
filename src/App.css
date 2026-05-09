@@ -108,15 +108,67 @@ h3 {
 }
 
 .sessionCard {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 18px;
   padding: 14px;
   background: rgba(15, 23, 42, 0.72);
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
+}
+
+.sessionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.tabList {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.tabItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.045);
+  color: #e5e7eb;
+  cursor: pointer;
+  text-align: left;
+}
+
+.tabItem:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tabItem img {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+
+.tabItem span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fallbackIcon {
+  width: 16px;
+  color: #a78bfa;
+  text-align: center;
+}
+
+.moreTabs {
+  margin: 2px 0 0;
+  color: #94a3b8;
+  font-size: 12px;
 }
 
 .sessionCard + .sessionCard {
@@ -140,4 +192,40 @@ h3 {
 
 .sessionCard button:hover {
   background: rgba(255, 255, 255, 0.16);
+}
+
+.searchInput {
+  width: 100%;
+  margin-top: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
+  padding: 13px 14px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fafc;
+  font: inherit;
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: #64748b;
+}
+
+.searchInput:focus {
+  border-color: rgba(167, 139, 250, 0.7);
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.18);
+}
+
+.sessionActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dangerButton {
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #fecaca !important;
+}
+
+.dangerButton:hover {
+  background: rgba(239, 68, 68, 0.28) !important;
 }
