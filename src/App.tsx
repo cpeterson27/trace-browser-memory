@@ -26,12 +26,18 @@ function App() {
   const [selectedTag, setSelectedTag] = useState("All");
   const [expandedSessionIds, setExpandedSessionIds] = useState<string[]>([]);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
 
   useEffect(() => {
     chrome.storage.local.get(
-      ["sessions", "lastSavedAt"],
-      (result: { sessions?: SavedSession[]; lastSavedAt?: string }) => {
+      ["sessions", "lastSavedAt", "autoSaveEnabled"],
+      (result: {
+        sessions?: SavedSession[];
+        lastSavedAt?: string;
+        autoSaveEnabled?: boolean;
+      }) => {
         setSessions(result.sessions || []);
+        setAutoSaveEnabled(result.autoSaveEnabled !== false);
 
         if (result.lastSavedAt) {
           setLastSavedAt(
@@ -54,6 +60,10 @@ function App() {
 
       if (changes.sessions?.newValue) {
         setSessions(changes.sessions.newValue as SavedSession[]);
+      }
+
+      if (changes.autoSaveEnabled?.newValue !== undefined) {
+        setAutoSaveEnabled(changes.autoSaveEnabled.newValue as boolean);
       }
 
       if (changes.lastSavedAt?.newValue) {
@@ -134,6 +144,14 @@ function App() {
       }
     );
   }, []);
+
+  const toggleAutoSave = () => {
+    const nextValue = !autoSaveEnabled;
+
+    chrome.storage.local.set({ autoSaveEnabled: nextValue }, () => {
+      setAutoSaveEnabled(nextValue);
+    });
+  };
 
   const restoreSession = (session: SavedSession) => {
     const urls = session.tabs.map((tab) => tab.url).filter(Boolean);
@@ -319,8 +337,12 @@ function App() {
     })
     .sort((a, b) => Number(b.isPinned) - Number(a.isPinned));
 
-  const favoriteSessions = filteredSessions.filter((session) => session.isPinned);
-  const regularSessions = filteredSessions.filter((session) => !session.isPinned);
+  const favoriteSessions = filteredSessions.filter(
+    (session) => session.isPinned
+  );
+  const regularSessions = filteredSessions.filter(
+    (session) => !session.isPinned
+  );
 
   const totalTabs = sessions.reduce(
     (total, session) => total + session.tabs.length,
@@ -428,11 +450,15 @@ function App() {
       </button>
 
       <p className="lastSaved">
-        Auto-save is on ·{" "}
+        Auto-save is {autoSaveEnabled ? "on" : "off"} ·{" "}
         {lastSavedAt
           ? `Last saved at ${lastSavedAt}`
           : "Waiting for first auto-save"}
       </p>
+
+      <button className="autoSaveToggle" onClick={toggleAutoSave}>
+        Auto-save: {autoSaveEnabled ? "On" : "Off"}
+      </button>
 
       <div className="stats">
         <span>{sessions.length} sessions</span>
@@ -511,7 +537,9 @@ function App() {
             {regularSessions.length > 0 && (
               <div className="sessionGroup">
                 <h2>
-                  {favoriteSessions.length > 0 ? "All Sessions" : "Saved Sessions"}
+                  {favoriteSessions.length > 0
+                    ? "All Sessions"
+                    : "Saved Sessions"}
                 </h2>
                 {regularSessions.map(renderSessionCard)}
               </div>

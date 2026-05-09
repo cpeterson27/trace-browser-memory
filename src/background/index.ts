@@ -1,5 +1,7 @@
 /// <reference types="chrome" />
 
+
+
 type SavedTab = {
   id: string;
   title: string;
@@ -38,62 +40,73 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 const saveCurrentWindowSession = async () => {
-  const windows = await chrome.windows.getAll({
-    populate: true,
-    windowTypes: ["normal"],
-  });
-
-  const focusedWindow = windows.find((window) => window.focused) || windows[0];
-
-  if (!focusedWindow?.tabs?.length) return;
-
-  const tabs = focusedWindow.tabs;
-  const currentUrls = tabs.map((tab) => tab.url || "");
-
   chrome.storage.local.get(
-    ["sessions"],
-    (result: { sessions?: SavedSession[] }) => {
-      const existingSessions = result.sessions || [];
-      const latestSession = existingSessions[0];
+    ["autoSaveEnabled"],
+    async (settings: { autoSaveEnabled?: boolean }) => {
+      if (settings.autoSaveEnabled === false) return;
 
-      if (latestSession) {
-        const latestUrls = latestSession.tabs.map((tab) => tab.url);
-        const isDuplicate =
-          JSON.stringify(currentUrls) === JSON.stringify(latestUrls);
-
-        if (isDuplicate) return;
-      }
-
-      const newSession: SavedSession = {
-  id: crypto.randomUUID(),
-  name:
-    tabs
-      .slice(0, 3)
-      .map((tab) => tab.title?.split("|")[0]?.trim() || "Untitled")
-      .join(", ") || "Auto-save",
-
-  summary: tabs
-    .slice(0, 3)
-    .map((tab) => tab.title?.split("|")[0]?.trim())
-    .filter(Boolean)
-    .join(" • "),
-
-  createdAt: new Date().toISOString(),
-
-  tabs: tabs.map((tab) => ({
-    id: crypto.randomUUID(),
-    title: tab.title || "Untitled",
-    url: tab.url || "",
-    favIconUrl: tab.favIconUrl,
-  })),
-};
-
-      const updatedSessions = [newSession, ...existingSessions].slice(0, 25);
-
-      chrome.storage.local.set({
-        sessions: updatedSessions,
-        lastSavedAt: new Date().toISOString(),
+      const windows = await chrome.windows.getAll({
+        populate: true,
+        windowTypes: ["normal"],
       });
+
+      const focusedWindow =
+        windows.find((window) => window.focused) || windows[0];
+
+      if (!focusedWindow?.tabs?.length) return;
+
+      const tabs = focusedWindow.tabs;
+      const currentUrls = tabs.map((tab) => tab.url || "");
+
+      chrome.storage.local.get(
+        ["sessions"],
+        (result: { sessions?: SavedSession[] }) => {
+          const existingSessions = result.sessions || [];
+          const latestSession = existingSessions[0];
+
+          if (latestSession) {
+            const latestUrls = latestSession.tabs.map((tab) => tab.url);
+            const isDuplicate =
+              JSON.stringify(currentUrls) === JSON.stringify(latestUrls);
+
+            if (isDuplicate) return;
+          }
+
+          const newSession: SavedSession = {
+            id: crypto.randomUUID(),
+            name:
+              tabs
+                .slice(0, 3)
+                .map(
+                  (tab) =>
+                    tab.title?.split("|")[0]?.trim() || "Untitled"
+                )
+                .join(", ") || "Auto-save",
+            summary: tabs
+              .slice(0, 3)
+              .map((tab) => tab.title?.split("|")[0]?.trim())
+              .filter(Boolean)
+              .join(" • "),
+            createdAt: new Date().toISOString(),
+            tabs: tabs.map((tab) => ({
+              id: crypto.randomUUID(),
+              title: tab.title || "Untitled",
+              url: tab.url || "",
+              favIconUrl: tab.favIconUrl,
+            })),
+          };
+
+          const updatedSessions = [newSession, ...existingSessions].slice(
+            0,
+            25
+          );
+
+          chrome.storage.local.set({
+            sessions: updatedSessions,
+            lastSavedAt: new Date().toISOString(),
+          });
+        }
+      );
     }
   );
 };
