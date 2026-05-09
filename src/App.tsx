@@ -170,6 +170,19 @@ function App() {
     });
   };
 
+  const exportSessions = () => {
+  const data = JSON.stringify(sessions, null, 2);
+  const blob = new Blob([data], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `trace-sessions-${new Date().toISOString()}.json`;
+  link.click();
+
+  URL.revokeObjectURL(url);
+};
+
   const filteredSessions = sessions.filter((session) => {
     const query = searchQuery.toLowerCase();
 
@@ -217,10 +230,16 @@ function App() {
       />
 
       {sessions.length > 0 && (
-        <button className="secondaryButton" onClick={clearAllSessions}>
-          Clear All Sessions
-        </button>
-      )}
+  <div className="utilityActions">
+    <button className="secondaryButton" onClick={exportSessions}>
+      Export Sessions
+    </button>
+
+    <button className="secondaryButton" onClick={clearAllSessions}>
+      Clear All Sessions
+    </button>
+  </div>
+)}
 
       <section className="sessions">
         <h2>Saved Sessions</h2>
