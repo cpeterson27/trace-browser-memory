@@ -22,53 +22,53 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
-useEffect(() => {
-  chrome.storage.local.get(
-    ["sessions", "lastSavedAt"],
-    (result: { sessions?: SavedSession[]; lastSavedAt?: string }) => {
-      setSessions(result.sessions || []);
+  useEffect(() => {
+    chrome.storage.local.get(
+      ["sessions", "lastSavedAt"],
+      (result: { sessions?: SavedSession[]; lastSavedAt?: string }) => {
+        setSessions(result.sessions || []);
 
-      if (result.lastSavedAt) {
+        if (result.lastSavedAt) {
+          setLastSavedAt(
+            new Date(result.lastSavedAt).toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit",
+            })
+          );
+        }
+      }
+    );
+  }, []);
+
+  useEffect(() => {
+    const handleStorageChange = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string
+    ) => {
+      if (areaName !== "local") return;
+
+      if (changes.sessions?.newValue) {
+        setSessions(changes.sessions.newValue as SavedSession[]);
+      }
+
+      if (changes.lastSavedAt?.newValue) {
+        const savedAt = changes.lastSavedAt.newValue as string;
+
         setLastSavedAt(
-          new Date(result.lastSavedAt).toLocaleTimeString([], {
+          new Date(savedAt).toLocaleTimeString([], {
             hour: "numeric",
             minute: "2-digit",
           })
         );
       }
-    }
-  );
-}, []);
+    };
 
-useEffect(() => {
-  const handleStorageChange = (
-    changes: { [key: string]: chrome.storage.StorageChange },
-    areaName: string
-  ) => {
-    if (areaName !== "local") return;
+    chrome.storage.onChanged.addListener(handleStorageChange);
 
-    if (changes.sessions?.newValue) {
-      setSessions(changes.sessions.newValue as SavedSession[]);
-    }
-
-    if (changes.lastSavedAt?.newValue) {
-      const savedAt = changes.lastSavedAt.newValue as string;
-
-      setLastSavedAt(
-        new Date(savedAt).toLocaleTimeString([], {
-          hour: "numeric",
-          minute: "2-digit",
-        })
-      );
-    }
-  };
-
-  chrome.storage.onChanged.addListener(handleStorageChange);
-
-  return () => {
-    chrome.storage.onChanged.removeListener(handleStorageChange);
-  };
-}, []);
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
+  }, []);
 
   const saveCurrentSession = useCallback(async (isAutoSave = false) => {
     const tabs = await chrome.tabs.query({ currentWindow: true });
@@ -110,15 +110,21 @@ useEffect(() => {
 
         const updatedSessions = [newSession, ...existingSessions].slice(0, 25);
 
-        chrome.storage.local.set({ sessions: updatedSessions }, () => {
-          setSessions(updatedSessions);
-          setLastSavedAt(
-            new Date().toLocaleTimeString([], {
-              hour: "numeric",
-              minute: "2-digit",
-            })
-          );
-        });
+        chrome.storage.local.set(
+          {
+            sessions: updatedSessions,
+            lastSavedAt: new Date().toISOString(),
+          },
+          () => {
+            setSessions(updatedSessions);
+            setLastSavedAt(
+              new Date().toLocaleTimeString([], {
+                hour: "numeric",
+                minute: "2-digit",
+              })
+            );
+          }
+        );
       }
     );
   }, []);
@@ -134,6 +140,22 @@ useEffect(() => {
   const deleteSession = (sessionId: string) => {
     const updatedSessions = sessions.filter(
       (session) => session.id !== sessionId
+    );
+
+    chrome.storage.local.set({ sessions: updatedSessions }, () => {
+      setSessions(updatedSessions);
+    });
+  };
+
+  const renameSession = (sessionId: string) => {
+    const newName = prompt("Rename this session:");
+
+    if (!newName?.trim()) return;
+
+    const updatedSessions = sessions.map((session) =>
+      session.id === sessionId
+        ? { ...session, name: newName.trim() }
+        : session
     );
 
     chrome.storage.local.set({ sessions: updatedSessions }, () => {
@@ -204,7 +226,17 @@ useEffect(() => {
         <h2>Saved Sessions</h2>
 
         {sessions.length === 0 ? (
-          <p className="empty">No sessions saved yet.</p>
+          <div className="emptyState">
+            <div className="emptyIcon">✨</div>
+            <h3>No sessions saved yet</h3>
+            <p>
+              Save your current tabs to create your first browser memory. Trace
+              will help you recover the tabs and workflows you were using.
+            </p>
+            <button onClick={() => saveCurrentSession()}>
+              Save First Session
+            </button>
+          </div>
         ) : filteredSessions.length === 0 ? (
           <p className="empty">No matching sessions found.</p>
         ) : (
@@ -223,6 +255,11 @@ useEffect(() => {
                   <button onClick={() => restoreSession(session)}>
                     Restore
                   </button>
+
+                  <button onClick={() => renameSession(session.id)}>
+                    Rename
+                  </button>
+
                   <button
                     className="dangerButton"
                     onClick={() => deleteSession(session.id)}
