@@ -7,6 +7,10 @@
     "default_title": "Trace",
     "default_popup": "index.html"
   },
-  "permissions": ["tabs", "storage"],
-  "host_permissions": ["<all_urls>"]
+  "permissions": ["tabs", "storage", "alarms"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "assets/background.js",
+    "type": "module"
+  }
 }
