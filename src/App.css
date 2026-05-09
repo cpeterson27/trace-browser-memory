@@ -368,3 +368,28 @@ h3 {
   font-size: 13px !important;
   line-height: 1.45;
 }
+
+.sessionGroup + .sessionGroup {
+  margin-top: 20px;
+}
+
+.primarySessionActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.secondarySessionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.secondarySessionActions button {
+  flex: 1 1 auto;
+  min-width: 78px;
+  font-size: 12px;
+}

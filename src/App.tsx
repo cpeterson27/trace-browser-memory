@@ -149,7 +149,6 @@ function App() {
       .join("\n\n");
 
     await navigator.clipboard.writeText(links);
-
     alert("Session links copied!");
   };
 
@@ -320,9 +319,94 @@ function App() {
     })
     .sort((a, b) => Number(b.isPinned) - Number(a.isPinned));
 
+  const favoriteSessions = filteredSessions.filter((session) => session.isPinned);
+  const regularSessions = filteredSessions.filter((session) => !session.isPinned);
+
   const totalTabs = sessions.reduce(
     (total, session) => total + session.tabs.length,
     0
+  );
+
+  const renderSessionCard = (session: SavedSession) => (
+    <article className="sessionCard" key={session.id}>
+      <div className="sessionHeader">
+        <div>
+          <h3>
+            {session.isPinned ? "📌 " : ""}
+            {session.name}
+          </h3>
+
+          {session.tag && <span className="sessionTag">{session.tag}</span>}
+
+          <p>
+            {new Date(session.createdAt).toLocaleString()} ·{" "}
+            {session.tabs.length} tabs
+          </p>
+
+          {session.summary && (
+            <p className="sessionSummary">{session.summary}</p>
+          )}
+        </div>
+
+        <div className="primarySessionActions">
+          <button onClick={() => restoreSession(session)}>Restore</button>
+
+          <button onClick={() => toggleSessionExpanded(session.id)}>
+            {expandedSessionIds.includes(session.id) ? "Hide Tabs" : "Show Tabs"}
+          </button>
+        </div>
+      </div>
+
+      {expandedSessionIds.includes(session.id) && (
+        <>
+          <div className="tabList">
+            {session.tabs.slice(0, 5).map((tab) => (
+              <button
+                className="tabItem"
+                key={tab.id}
+                onClick={() => chrome.tabs.create({ url: tab.url })}
+              >
+                {tab.favIconUrl ? (
+                  <img src={tab.favIconUrl} alt="" />
+                ) : (
+                  <span className="fallbackIcon">•</span>
+                )}
+                <span>{tab.title}</span>
+              </button>
+            ))}
+
+            {session.tabs.length > 5 && (
+              <p className="moreTabs">
+                +{session.tabs.length - 5} more tabs
+              </p>
+            )}
+          </div>
+
+          <div className="secondarySessionActions">
+            <button onClick={() => togglePinSession(session.id)}>
+              {session.isPinned ? "Unpin" : "Pin"}
+            </button>
+
+            <button onClick={() => tagSession(session.id)}>Tag</button>
+
+            <button onClick={() => renameSession(session.id)}>Rename</button>
+
+            <button onClick={() => editSessionSummary(session.id)}>
+              Edit Summary
+            </button>
+
+            <button onClick={() => copySessionLinks(session)}>Copy</button>
+
+            <button
+              className="dangerButton"
+              onClick={() => deleteSession(session.id)}
+            >
+              Delete
+            </button>
+          </div>
+        </>
+      )}
+    </article>
   );
 
   return (
@@ -401,8 +485,6 @@ function App() {
       )}
 
       <section className="sessions">
-        <h2>Saved Sessions</h2>
-
         {sessions.length === 0 ? (
           <div className="emptyState">
             <div className="emptyIcon">✨</div>
@@ -418,93 +500,23 @@ function App() {
         ) : filteredSessions.length === 0 ? (
           <p className="empty">No matching sessions found.</p>
         ) : (
-          filteredSessions.map((session) => (
-            <article className="sessionCard" key={session.id}>
-              <div className="sessionHeader">
-                <div>
-                  <h3>
-                    {session.isPinned ? "📌 " : ""}
-                    {session.name}
-                  </h3>
-
-                  {session.tag && (
-                    <span className="sessionTag">{session.tag}</span>
-                  )}
-
-                  <p>
-                    {new Date(session.createdAt).toLocaleString()} ·{" "}
-                    {session.tabs.length} tabs
-                  </p>
-
-                  {session.summary && (
-                    <p className="sessionSummary">{session.summary}</p>
-                  )}
-                </div>
-
-                <div className="sessionActions">
-                  <button onClick={() => togglePinSession(session.id)}>
-                    {session.isPinned ? "Unpin" : "Pin"}
-                  </button>
-
-                  <button onClick={() => editSessionSummary(session.id)}>
-                    Edit Summary
-                  </button>
-
-                  <button onClick={() => toggleSessionExpanded(session.id)}>
-                    {expandedSessionIds.includes(session.id)
-                      ? "Hide Tabs"
-                      : "Show Tabs"}
-                  </button>
-
-                  <button onClick={() => restoreSession(session)}>
-                    Restore
-                  </button>
-
-                  <button onClick={() => tagSession(session.id)}>Tag</button>
-
-                  <button onClick={() => renameSession(session.id)}>
-                    Rename
-                  </button>
-
-                  <button onClick={() => copySessionLinks(session)}>
-                    Copy
-                  </button>
-
-                  <button
-                    className="dangerButton"
-                    onClick={() => deleteSession(session.id)}
-                  >
-                    Delete
-                  </button>
-                </div>
+          <>
+            {favoriteSessions.length > 0 && (
+              <div className="sessionGroup">
+                <h2>Favorites</h2>
+                {favoriteSessions.map(renderSessionCard)}
               </div>
+            )}
 
-              {expandedSessionIds.includes(session.id) && (
-                <div className="tabList">
-                  {session.tabs.slice(0, 5).map((tab) => (
-                    <button
-                      className="tabItem"
-                      key={tab.id}
-                      onClick={() => chrome.tabs.create({ url: tab.url })}
-                    >
-                      {tab.favIconUrl ? (
-                        <img src={tab.favIconUrl} alt="" />
-                      ) : (
-                        <span className="fallbackIcon">•</span>
-                      )}
-                      <span>{tab.title}</span>
-                    </button>
-                  ))}
-
-                  {session.tabs.length > 5 && (
-                    <p className="moreTabs">
-                      +{session.tabs.length - 5} more tabs
-                    </p>
-                  )}
-                </div>
-              )}
-            </article>
-          ))
+            {regularSessions.length > 0 && (
+              <div className="sessionGroup">
+                <h2>
+                  {favoriteSessions.length > 0 ? "All Sessions" : "Saved Sessions"}
+                </h2>
+                {regularSessions.map(renderSessionCard)}
+              </div>
+            )}
+          </>
         )}
       </section>
     </main>
