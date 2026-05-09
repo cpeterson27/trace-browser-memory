@@ -33,31 +33,42 @@ function App() {
 
   const saveCurrentSession = useCallback(async (isAutoSave = false) => {
     const tabs = await chrome.tabs.query({ currentWindow: true });
-
-    const newSession: SavedSession = {
-      id: crypto.randomUUID(),
-      name: isAutoSave
-        ? `Auto-save · ${new Date().toLocaleTimeString([], {
-            hour: "numeric",
-            minute: "2-digit",
-          })}`
-        : tabs
-            .slice(0, 3)
-            .map((tab) => tab.title?.split("|")[0]?.trim() || "Untitled")
-            .join(", ") || "New Session",
-      createdAt: new Date().toISOString(),
-      tabs: tabs.map((tab: chrome.tabs.Tab) => ({
-        id: crypto.randomUUID(),
-        title: tab.title || "Untitled",
-        url: tab.url || "",
-        favIconUrl: tab.favIconUrl,
-      })),
-    };
+    const currentUrls = tabs.map((tab) => tab.url || "");
 
     chrome.storage.local.get(
       ["sessions"],
       (result: { sessions?: SavedSession[] }) => {
         const existingSessions = result.sessions || [];
+        const latestSession = existingSessions[0];
+
+        if (latestSession && isAutoSave) {
+          const latestUrls = latestSession.tabs.map((tab) => tab.url);
+          const isDuplicate =
+            JSON.stringify(currentUrls) === JSON.stringify(latestUrls);
+
+          if (isDuplicate) return;
+        }
+
+        const newSession: SavedSession = {
+          id: crypto.randomUUID(),
+          name: isAutoSave
+            ? `Auto-save · ${new Date().toLocaleTimeString([], {
+                hour: "numeric",
+                minute: "2-digit",
+              })}`
+            : tabs
+                .slice(0, 3)
+                .map((tab) => tab.title?.split("|")[0]?.trim() || "Untitled")
+                .join(", ") || "New Session",
+          createdAt: new Date().toISOString(),
+          tabs: tabs.map((tab: chrome.tabs.Tab) => ({
+            id: crypto.randomUUID(),
+            title: tab.title || "Untitled",
+            url: tab.url || "",
+            favIconUrl: tab.favIconUrl,
+          })),
+        };
+
         const updatedSessions = [newSession, ...existingSessions].slice(0, 25);
 
         chrome.storage.local.set({ sessions: updatedSessions }, () => {
@@ -102,6 +113,7 @@ function App() {
   const clearAllSessions = () => {
     chrome.storage.local.set({ sessions: [] }, () => {
       setSessions([]);
+      setLastSavedAt(null);
     });
   };
 
