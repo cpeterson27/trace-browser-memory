@@ -361,3 +361,10 @@ h3 {
   color: #94a3b8;
   font-size: 12px;
 }
+
+.sessionSummary {
+  margin-top: 8px !important;
+  color: #cbd5e1 !important;
+  font-size: 13px !important;
+  line-height: 1.45;
+}

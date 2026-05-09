@@ -14,6 +14,7 @@ type SavedSession = {
   tabs: SavedTab[];
   isPinned?: boolean;
   tag?: string;
+  summary?: string;
 };
 
 const AUTO_SAVE_ALARM = "trace-auto-save";
@@ -64,20 +65,28 @@ const saveCurrentWindowSession = async () => {
       }
 
       const newSession: SavedSession = {
-        id: crypto.randomUUID(),
-        name:
-  tabs
+  id: crypto.randomUUID(),
+  name:
+    tabs
+      .slice(0, 3)
+      .map((tab) => tab.title?.split("|")[0]?.trim() || "Untitled")
+      .join(", ") || "Auto-save",
+
+  summary: tabs
     .slice(0, 3)
-    .map((tab) => tab.title?.split("|")[0]?.trim() || "Untitled")
-    .join(", ") || "Auto-save",
-        createdAt: new Date().toISOString(),
-        tabs: tabs.map((tab) => ({
-          id: crypto.randomUUID(),
-          title: tab.title || "Untitled",
-          url: tab.url || "",
-          favIconUrl: tab.favIconUrl,
-        })),
-      };
+    .map((tab) => tab.title?.split("|")[0]?.trim())
+    .filter(Boolean)
+    .join(" • "),
+
+  createdAt: new Date().toISOString(),
+
+  tabs: tabs.map((tab) => ({
+    id: crypto.randomUUID(),
+    title: tab.title || "Untitled",
+    url: tab.url || "",
+    favIconUrl: tab.favIconUrl,
+  })),
+};
 
       const updatedSessions = [newSession, ...existingSessions].slice(0, 25);
 

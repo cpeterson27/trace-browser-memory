@@ -17,6 +17,7 @@ type SavedSession = {
   tabs: SavedTab[];
   isPinned?: boolean;
   tag?: string;
+  summary?: string;
 };
 
 function App() {
@@ -91,25 +92,29 @@ function App() {
           if (isDuplicate) return;
         }
 
-        const newSession: SavedSession = {
-          id: crypto.randomUUID(),
-          name: isAutoSave
-            ? `Auto-save · ${new Date().toLocaleTimeString([], {
-                hour: "numeric",
-                minute: "2-digit",
-              })}`
-            : tabs
-                .slice(0, 3)
-                .map((tab) => tab.title?.split("|")[0]?.trim() || "Untitled")
-                .join(", ") || "New Session",
-          createdAt: new Date().toISOString(),
-          tabs: tabs.map((tab: chrome.tabs.Tab) => ({
-            id: crypto.randomUUID(),
-            title: tab.title || "Untitled",
-            url: tab.url || "",
-            favIconUrl: tab.favIconUrl,
-          })),
-        };
+       const newSession: SavedSession = {
+  id: crypto.randomUUID(),
+  name:
+    tabs
+      .slice(0, 3)
+      .map((tab) => tab.title?.split("|")[0]?.trim() || "Untitled")
+      .join(", ") || "Auto-save",
+
+  summary: tabs
+    .slice(0, 3)
+    .map((tab) => tab.title?.split("|")[0]?.trim())
+    .filter(Boolean)
+    .join(" • "),
+
+  createdAt: new Date().toISOString(),
+
+  tabs: tabs.map((tab) => ({
+    id: crypto.randomUUID(),
+    title: tab.title || "Untitled",
+    url: tab.url || "",
+    favIconUrl: tab.favIconUrl,
+  })),
+};
 
         const updatedSessions = [newSession, ...existingSessions].slice(0, 25);
 
@@ -401,6 +406,9 @@ function App() {
                     {new Date(session.createdAt).toLocaleString()} ·{" "}
                     {session.tabs.length} tabs
                   </p>
+                  {session.summary && (
+  <p className="sessionSummary">{session.summary}</p>
+)}
                 </div>
 
                 <div className="sessionActions">
