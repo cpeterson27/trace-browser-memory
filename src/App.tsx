@@ -40,6 +40,36 @@ useEffect(() => {
   );
 }, []);
 
+useEffect(() => {
+  const handleStorageChange = (
+    changes: { [key: string]: chrome.storage.StorageChange },
+    areaName: string
+  ) => {
+    if (areaName !== "local") return;
+
+    if (changes.sessions?.newValue) {
+      setSessions(changes.sessions.newValue as SavedSession[]);
+    }
+
+    if (changes.lastSavedAt?.newValue) {
+      const savedAt = changes.lastSavedAt.newValue as string;
+
+      setLastSavedAt(
+        new Date(savedAt).toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      );
+    }
+  };
+
+  chrome.storage.onChanged.addListener(handleStorageChange);
+
+  return () => {
+    chrome.storage.onChanged.removeListener(handleStorageChange);
+  };
+}, []);
+
   const saveCurrentSession = useCallback(async (isAutoSave = false) => {
     const tabs = await chrome.tabs.query({ currentWindow: true });
     const currentUrls = tabs.map((tab) => tab.url || "");
