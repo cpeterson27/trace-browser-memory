@@ -84,14 +84,6 @@ function App() {
     );
   }, []);
 
-  useEffect(() => {
-    const autoSaveInterval = setInterval(() => {
-      saveCurrentSession(true);
-    }, 5 * 60 * 1000);
-
-    return () => clearInterval(autoSaveInterval);
-  }, [saveCurrentSession]);
-
   const restoreSession = (session: SavedSession) => {
     session.tabs.forEach((tab) => {
       if (tab.url) {
