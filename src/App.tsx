@@ -35,7 +35,11 @@ function App() {
 
     const newSession: SavedSession = {
       id: crypto.randomUUID(),
-      name: `Session ${sessions.length + 1}`,
+      name:
+        tabs
+          .slice(0, 3)
+          .map((tab) => tab.title?.split("|")[0]?.trim() || "Untitled")
+          .join(", ") || `Session ${sessions.length + 1}`,
       createdAt: new Date().toISOString(),
       tabs: tabs.map((tab: chrome.tabs.Tab) => ({
         id: crypto.randomUUID(),
@@ -61,12 +65,20 @@ function App() {
   };
 
   const deleteSession = (sessionId: string) => {
-  const updatedSessions = sessions.filter((session) => session.id !== sessionId);
+    const updatedSessions = sessions.filter(
+      (session) => session.id !== sessionId
+    );
 
-  chrome.storage.local.set({ sessions: updatedSessions }, () => {
-    setSessions(updatedSessions);
-  });
-};
+    chrome.storage.local.set({ sessions: updatedSessions }, () => {
+      setSessions(updatedSessions);
+    });
+  };
+
+  const clearAllSessions = () => {
+    chrome.storage.local.set({ sessions: [] }, () => {
+      setSessions([]);
+    });
+  };
 
   const filteredSessions = sessions.filter((session) => {
     const query = searchQuery.toLowerCase();
@@ -107,6 +119,12 @@ function App() {
         onChange={(event) => setSearchQuery(event.target.value)}
       />
 
+      {sessions.length > 0 && (
+        <button className="secondaryButton" onClick={clearAllSessions}>
+          Clear All Sessions
+        </button>
+      )}
+
       <section className="sessions">
         <h2>Saved Sessions</h2>
 
@@ -126,12 +144,18 @@ function App() {
                   </p>
                 </div>
 
-<div className="sessionActions">
-  <button onClick={() => restoreSession(session)}>Restore</button>
-  <button className="dangerButton" onClick={() => deleteSession(session.id)}>
-    Delete
-  </button>
-</div>              </div>
+                <div className="sessionActions">
+                  <button onClick={() => restoreSession(session)}>
+                    Restore
+                  </button>
+                  <button
+                    className="dangerButton"
+                    onClick={() => deleteSession(session.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
 
               <div className="tabList">
                 {session.tabs.slice(0, 5).map((tab) => (
