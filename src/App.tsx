@@ -183,6 +183,34 @@ function App() {
   URL.revokeObjectURL(url);
 };
 
+const importSessions = () => {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "application/json";
+
+  input.onchange = async () => {
+    const file = input.files?.[0];
+
+    if (!file) return;
+
+    const text = await file.text();
+    const importedSessions = JSON.parse(text) as SavedSession[];
+
+    if (!Array.isArray(importedSessions)) {
+      alert("Invalid Trace sessions file.");
+      return;
+    }
+
+    const updatedSessions = [...importedSessions, ...sessions].slice(0, 25);
+
+    chrome.storage.local.set({ sessions: updatedSessions }, () => {
+      setSessions(updatedSessions);
+    });
+  };
+
+  input.click();
+};
+
   const filteredSessions = sessions.filter((session) => {
     const query = searchQuery.toLowerCase();
 
@@ -231,6 +259,9 @@ function App() {
 
       {sessions.length > 0 && (
   <div className="utilityActions">
+    <button className="secondaryButton" onClick={importSessions}>
+  Import Sessions
+</button>
     <button className="secondaryButton" onClick={exportSessions}>
       Export Sessions
     </button>
