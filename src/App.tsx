@@ -1,6 +1,6 @@
 /// <reference types="chrome" />
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import "./App.css";
 
 type SavedTab = {
@@ -20,6 +20,7 @@ type SavedSession = {
 function App() {
   const [sessions, setSessions] = useState<SavedSession[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
     chrome.storage.local.get(
@@ -30,16 +31,20 @@ function App() {
     );
   }, []);
 
-  const saveCurrentSession = async () => {
+  const saveCurrentSession = useCallback(async (isAutoSave = false) => {
     const tabs = await chrome.tabs.query({ currentWindow: true });
 
     const newSession: SavedSession = {
       id: crypto.randomUUID(),
-      name:
-        tabs
-          .slice(0, 3)
-          .map((tab) => tab.title?.split("|")[0]?.trim() || "Untitled")
-          .join(", ") || `Session ${sessions.length + 1}`,
+      name: isAutoSave
+        ? `Auto-save · ${new Date().toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+          })}`
+        : tabs
+            .slice(0, 3)
+            .map((tab) => tab.title?.split("|")[0]?.trim() || "Untitled")
+            .join(", ") || "New Session",
       createdAt: new Date().toISOString(),
       tabs: tabs.map((tab: chrome.tabs.Tab) => ({
         id: crypto.randomUUID(),
@@ -49,12 +54,32 @@ function App() {
       })),
     };
 
-    const updatedSessions = [newSession, ...sessions];
+    chrome.storage.local.get(
+      ["sessions"],
+      (result: { sessions?: SavedSession[] }) => {
+        const existingSessions = result.sessions || [];
+        const updatedSessions = [newSession, ...existingSessions].slice(0, 25);
 
-    chrome.storage.local.set({ sessions: updatedSessions }, () => {
-      setSessions(updatedSessions);
-    });
-  };
+        chrome.storage.local.set({ sessions: updatedSessions }, () => {
+          setSessions(updatedSessions);
+          setLastSavedAt(
+            new Date().toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit",
+            })
+          );
+        });
+      }
+    );
+  }, []);
+
+  useEffect(() => {
+    const autoSaveInterval = setInterval(() => {
+      saveCurrentSession(true);
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(autoSaveInterval);
+  }, [saveCurrentSession]);
 
   const restoreSession = (session: SavedSession) => {
     session.tabs.forEach((tab) => {
@@ -107,9 +132,16 @@ function App() {
         Save your current tabs and restore them when you lose your flow.
       </p>
 
-      <button className="primaryButton" onClick={saveCurrentSession}>
+      <button className="primaryButton" onClick={() => saveCurrentSession()}>
         Save Current Session
       </button>
+
+      <p className="lastSaved">
+        Auto-save is on ·{" "}
+        {lastSavedAt
+          ? `Last saved at ${lastSavedAt}`
+          : "Waiting for first auto-save"}
+      </p>
 
       <input
         className="searchInput"

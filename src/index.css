@@ -11,3 +11,10 @@ body,
   min-height: 100%;
   background: #020617;
 }
+
+.lastSaved {
+  margin: 10px 0 0;
+  color: #94a3b8;
+  font-size: 12px;
+  text-align: center;
+}
