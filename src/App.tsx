@@ -137,15 +137,19 @@ function App() {
     });
   };
 
-  const deleteSession = (sessionId: string) => {
-    const updatedSessions = sessions.filter(
-      (session) => session.id !== sessionId
-    );
+ const deleteSession = (sessionId: string) => {
+  const confirmed = confirm("Delete this saved session?");
 
-    chrome.storage.local.set({ sessions: updatedSessions }, () => {
-      setSessions(updatedSessions);
-    });
-  };
+  if (!confirmed) return;
+
+  const updatedSessions = sessions.filter(
+    (session) => session.id !== sessionId
+  );
+
+  chrome.storage.local.set({ sessions: updatedSessions }, () => {
+    setSessions(updatedSessions);
+  });
+};
 
   const renameSession = (sessionId: string) => {
     const newName = prompt("Rename this session:");
@@ -163,12 +167,16 @@ function App() {
     });
   };
 
-  const clearAllSessions = () => {
-    chrome.storage.local.set({ sessions: [] }, () => {
-      setSessions([]);
-      setLastSavedAt(null);
-    });
-  };
+ const clearAllSessions = () => {
+  const confirmed = confirm("Clear all saved sessions? This cannot be undone.");
+
+  if (!confirmed) return;
+
+  chrome.storage.local.set({ sessions: [], lastSavedAt: null }, () => {
+    setSessions([]);
+    setLastSavedAt(null);
+  });
+};
 
   const exportSessions = () => {
   const data = JSON.stringify(sessions, null, 2);
