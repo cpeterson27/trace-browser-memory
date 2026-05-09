@@ -232,6 +232,11 @@ const importSessions = () => {
     );
   });
 
+  const totalTabs = sessions.reduce(
+  (total, session) => total + session.tabs.length,
+  0
+);
+
   return (
     <main className="app">
       <section className="header">
@@ -256,6 +261,11 @@ const importSessions = () => {
           ? `Last saved at ${lastSavedAt}`
           : "Waiting for first auto-save"}
       </p>
+
+      <div className="stats">
+  <span>{sessions.length} sessions</span>
+  <span>{totalTabs} tabs saved</span>
+</div>
 
       <input
         className="searchInput"
