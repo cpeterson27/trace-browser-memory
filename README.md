@@ -2,6 +2,10 @@
 
 Trace is a Chrome extension that saves, searches, restores, and organizes browser sessions so users can recover lost tabs and workflows.
 
+## Preview
+
+![Trace Browser Memory popup](public/screenshots/trace-popup.png)
+
 ## Features
 
 - Save current browser sessions
