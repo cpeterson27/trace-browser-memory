@@ -16,6 +16,7 @@ type SavedSession = {
   createdAt: string;
   tabs: SavedTab[];
   isPinned?: boolean;
+  tag?: string;
 };
 
 function App() {
@@ -188,6 +189,22 @@ const copySessionLinks = async (session: SavedSession) => {
   });
 };
 
+const tagSession = (sessionId: string) => {
+  const newTag = prompt("Add a tag/category for this session:");
+
+  if (!newTag?.trim()) return;
+
+  const updatedSessions = sessions.map((session) =>
+    session.id === sessionId
+      ? { ...session, tag: newTag.trim() }
+      : session
+  );
+
+  chrome.storage.local.set({ sessions: updatedSessions }, () => {
+    setSessions(updatedSessions);
+  });
+};
+
  const clearAllSessions = () => {
   const confirmed = confirm("Clear all saved sessions? This cannot be undone.");
 
@@ -245,6 +262,7 @@ const importSessions = () => {
     const query = searchQuery.toLowerCase();
 
     return (
+      session.tag?.toLowerCase().includes(query) ||
       session.name.toLowerCase().includes(query) ||
       session.tabs.some(
         (tab) =>
@@ -336,6 +354,7 @@ const importSessions = () => {
               <div className="sessionHeader">
                 <div>
                   <h3>{session.isPinned ? "📌 " : ""}{session.name}</h3>
+                  {session.tag && <span className="sessionTag">{session.tag}</span>}
                   <p>
                     {new Date(session.createdAt).toLocaleString()} ·{" "}
                     {session.tabs.length} tabs
@@ -349,6 +368,9 @@ const importSessions = () => {
   <button onClick={() => restoreSession(session)}>
     Restore
   </button>
+  <button onClick={() => tagSession(session.id)}>
+  Tag
+</button>
 
   <button onClick={() => renameSession(session.id)}>
     Rename
