@@ -65,7 +65,11 @@ const saveCurrentWindowSession = async () => {
 
       const newSession: SavedSession = {
         id: crypto.randomUUID(),
-        name: "Auto-save",
+        name:
+  tabs
+    .slice(0, 3)
+    .map((tab) => tab.title?.split("|")[0]?.trim() || "Untitled")
+    .join(", ") || "Auto-save",
         createdAt: new Date().toISOString(),
         tabs: tabs.map((tab) => ({
           id: crypto.randomUUID(),
