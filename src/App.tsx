@@ -1,122 +1,101 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+/// <reference types="chrome" />
+import { useEffect, useState } from "react";
+import "./App.css";
+
+type SavedTab = {
+  id: string;
+  title: string;
+  url: string;
+  favIconUrl?: string;
+};
+
+type SavedSession = {
+  id: string;
+  name: string;
+  createdAt: string;
+  tabs: SavedTab[];
+};
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [sessions, setSessions] = useState<SavedSession[]>([]);
+
+  useEffect(() => {
+chrome.storage.local.get(["sessions"], (result: { sessions?: SavedSession[] }) => {
+      setSessions(result.sessions || []);
+    });
+  }, []);
+
+  const saveCurrentSession = async () => {
+    const tabs = await chrome.tabs.query({ currentWindow: true });
+
+    const newSession: SavedSession = {
+      id: crypto.randomUUID(),
+      name: `Session ${sessions.length + 1}`,
+      createdAt: new Date().toISOString(),
+      tabs: tabs.map((tab: chrome.tabs.Tab) => ({
+        id: crypto.randomUUID(),
+        title: tab.title || "Untitled",
+        url: tab.url || "",
+        favIconUrl: tab.favIconUrl,
+      })),
+    };
+
+    const updatedSessions = [newSession, ...sessions];
+
+    chrome.storage.local.set({ sessions: updatedSessions }, () => {
+      setSessions(updatedSessions);
+    });
+  };
+
+  const restoreSession = (session: SavedSession) => {
+    session.tabs.forEach((tab) => {
+      if (tab.url) {
+        chrome.tabs.create({ url: tab.url });
+      }
+    });
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
+    <main className="app">
+      <section className="header">
         <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
+          <p className="eyebrow">Trace</p>
+          <h1>Browser Memory</h1>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
+        <span className="badge">MVP</span>
       </section>
 
-      <div className="ticks"></div>
+      <p className="subtitle">
+        Save your current tabs and restore them when you lose your flow.
+      </p>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
+      <button className="primaryButton" onClick={saveCurrentSession}>
+        Save Current Session
+      </button>
+
+      <section className="sessions">
+        <h2>Saved Sessions</h2>
+
+        {sessions.length === 0 ? (
+          <p className="empty">No sessions saved yet.</p>
+        ) : (
+          sessions.map((session) => (
+            <article className="sessionCard" key={session.id}>
+              <div>
+                <h3>{session.name}</h3>
+                <p>
+                  {new Date(session.createdAt).toLocaleString()} ·{" "}
+                  {session.tabs.length} tabs
+                </p>
+              </div>
+
+              <button onClick={() => restoreSession(session)}>Restore</button>
+            </article>
+          ))
+        )}
       </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    </main>
+  );
 }
 
-export default App
+export default App;

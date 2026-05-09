@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Trace Browser Memory",
+  "version": "0.1.0",
+  "description": "Save and restore browser sessions so you never lose your tabs again.",
+  "action": {
+    "default_title": "Trace",
+    "default_popup": "index.html"
+  },
+  "permissions": ["tabs", "storage"],
+  "host_permissions": ["<all_urls>"]
+}
